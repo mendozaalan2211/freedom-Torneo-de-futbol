@@ -137,11 +137,7 @@ export default function AdminPanel() {
   return (
     <div className="admin-shell">
       <div className="admin-sidebar">
-        <div className="brand-badge" style={{ marginBottom: 28 }}>
-          Freedom
-          <br />
-          En Español
-        </div>
+        <div className="brand-text" style={{ marginBottom: 28 }}>FREEDOM EN ESPAÑOL</div>
         <button
           className={'admin-nav-item ' + (view === 'equipos' ? 'active' : '')}
           onClick={() => {
@@ -248,6 +244,7 @@ export default function AdminPanel() {
               <tr>
                 <th>Jugador</th>
                 <th>Edad</th>
+                <th>Teléfono</th>
                 <th>Equipo</th>
                 <th>Capitán</th>
               </tr>
@@ -257,6 +254,7 @@ export default function AdminPanel() {
                 <tr key={i}>
                   <td>{p.nombre}</td>
                   <td>{p.edad}</td>
+                  <td>{p.telefono || '—'}</td>
                   <td>{p.equipo}</td>
                   <td>{p.capitan}</td>
                 </tr>
@@ -293,7 +291,9 @@ export default function AdminPanel() {
               {(selected.jugadores || []).map((p, i) => (
                 <div className="detail-player-item" key={i}>
                   <span>{p.nombre}</span>
-                  <span style={{ color: 'var(--gray)' }}>{p.edad} años</span>
+                  <span style={{ color: 'var(--gray)' }}>
+                    {p.edad} años{p.telefono ? ' · ' + p.telefono : ''}
+                  </span>
                 </div>
               ))}
             </div>
