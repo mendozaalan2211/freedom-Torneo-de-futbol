@@ -1,9 +1,7 @@
 import React, { useState } from 'react'
 import { supabase, TABLE_NAME, MIN_JUGADORES } from './supabaseClient.js'
 
-const CATEGORIAS = ['Varonil Libre', 'Varonil 35+', 'Femenil', 'Mixto']
-
-const emptyPlayer = () => ({ nombre: '', edad: '' })
+const emptyPlayer = () => ({ nombre: '', edad: '', telefono: '' })
 
 export default function RegistrationForm() {
   const [step, setStep] = useState(1)
@@ -39,7 +37,6 @@ export default function RegistrationForm() {
 
   const teamValid = {
     nombre_equipo: team.nombre_equipo.trim().length > 1,
-    categoria: team.categoria !== '',
     color_uniforme: team.color_uniforme.trim().length > 1,
   }
   const step2Valid = Object.values(teamValid).every(Boolean)
@@ -84,6 +81,7 @@ export default function RegistrationForm() {
         jugadores: validPlayers.map((p) => ({
           nombre: p.nombre.trim(),
           edad: Number(p.edad),
+          telefono: p.telefono.trim(),
         })),
         estado: validPlayers.length >= MIN_JUGADORES ? 'completo' : 'incompleto',
       })
@@ -248,18 +246,12 @@ export default function RegistrationForm() {
             </div>
 
             <div className="field">
-              <label>Categoría</label>
-              <select
+              <label>Categoría (opcional)</label>
+              <input
                 value={team.categoria}
                 onChange={(e) => setTeam({ ...team, categoria: e.target.value })}
-              >
-                <option value="">Selecciona una categoría</option>
-                {CATEGORIAS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                placeholder="Ej. Varonil, Femenil, Libre..."
+              />
             </div>
 
             <div className="field">
@@ -302,21 +294,29 @@ export default function RegistrationForm() {
             </div>
 
             {players.map((p, i) => (
-              <div className="player-row" key={i}>
+              <div className="player-row" key={i} style={{ flexWrap: 'wrap' }}>
                 <div className="player-num">{i + 1}</div>
-                <div className="field">
+                <div className="field" style={{ flexBasis: '100%' }}>
                   <input
                     value={p.nombre}
                     onChange={(e) => updatePlayer(i, 'nombre', e.target.value)}
                     placeholder="Nombre del jugador"
                   />
                 </div>
-                <div className="field" style={{ maxWidth: 80 }}>
+                <div className="field" style={{ maxWidth: 80, marginLeft: 38 }}>
                   <input
                     value={p.edad}
                     onChange={(e) => updatePlayer(i, 'edad', e.target.value)}
                     type="number"
                     placeholder="Edad"
+                  />
+                </div>
+                <div className="field" style={{ flex: 1 }}>
+                  <input
+                    value={p.telefono}
+                    onChange={(e) => updatePlayer(i, 'telefono', e.target.value)}
+                    placeholder="Teléfono (opcional)"
+                    inputMode="tel"
                   />
                 </div>
                 {players.length > 1 && (
@@ -354,7 +354,7 @@ export default function RegistrationForm() {
               <div className="summary-label">Equipo</div>
               <div className="summary-value">{team.nombre_equipo}</div>
               <div style={{ color: 'var(--gray)', fontSize: 14, marginTop: 4 }}>
-                {team.categoria} · Uniforme {team.color_uniforme}
+                {team.categoria ? team.categoria + ' · ' : ''}Uniforme {team.color_uniforme}
               </div>
             </div>
 
