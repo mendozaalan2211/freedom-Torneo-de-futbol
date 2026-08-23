@@ -116,11 +116,7 @@ export default function RegistrationForm() {
   return (
     <div className="app-shell">
       <div className="form-wrap">
-        <div className="brand-badge">
-          Freedom
-          <br />
-          En Español
-        </div>
+        <div className="brand-text">FREEDOM EN ESPAÑOL</div>
 
         <h1 className="hero-title">REGISTRO</h1>
         <div className="hero-subtitle">
