@@ -12,6 +12,18 @@ export default function AdminPanel() {
   const [loadError, setLoadError] = useState('')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
+  const [editingPlayers, setEditingPlayers] = useState(false)
+  const [draftPlayers, setDraftPlayers] = useState([])
+  const [savingPlayers, setSavingPlayers] = useState(false)
+  const [deletingTeam, setDeletingTeam] = useState(false)
+
+  // Mantener "selected" sincronizado si llegan cambios en tiempo real
+  useEffect(() => {
+    if (!selected) return
+    const fresh = teams.find((t) => t.id === selected.id)
+    if (fresh && fresh !== selected) setSelected(fresh)
+    if (!fresh) setSelected(null)
+  }, [teams])
 
   useEffect(() => {
     if (!unlocked) return
@@ -84,6 +96,72 @@ export default function AdminPanel() {
     return { text: 'Incompleto', cls: 'status-incompleto' }
   }
 
+  async function deleteTeam(team) {
+    const ok = window.confirm(
+      `¿Eliminar el equipo "${team.nombre_equipo}"? Esta acción no se puede deshacer.`
+    )
+    if (!ok) return
+    setDeletingTeam(true)
+    const { error } = await supabase.from(TABLE_NAME).delete().eq('id', team.id)
+    setDeletingTeam(false)
+    if (error) {
+      alert('No se pudo eliminar el equipo. Intenta de nuevo.')
+      return
+    }
+    setSelected(null)
+  }
+
+  function startEditingPlayers() {
+    setDraftPlayers((selected.jugadores || []).map((p) => ({ ...p })))
+    setEditingPlayers(true)
+  }
+
+  function cancelEditingPlayers() {
+    setEditingPlayers(false)
+    setDraftPlayers([])
+  }
+
+  function updateDraftPlayer(index, field, value) {
+    setDraftPlayers((prev) => {
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
+
+  function removeDraftPlayer(index) {
+    setDraftPlayers((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function addDraftPlayer() {
+    setDraftPlayers((prev) => [...prev, { nombre: '', edad: '', telefono: '' }])
+  }
+
+  async function savePlayers() {
+    const cleaned = draftPlayers
+      .filter((p) => p.nombre && p.nombre.trim().length > 1)
+      .map((p) => ({
+        nombre: p.nombre.trim(),
+        edad: Number(p.edad) || '',
+        telefono: p.telefono ? p.telefono.trim() : '',
+      }))
+    setSavingPlayers(true)
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .update({
+        jugadores: cleaned,
+        estado: cleaned.length >= MIN_JUGADORES ? 'completo' : 'incompleto',
+      })
+      .eq('id', selected.id)
+    setSavingPlayers(false)
+    if (error) {
+      alert('No se pudieron guardar los cambios. Intenta de nuevo.')
+      return
+    }
+    setEditingPlayers(false)
+    setDraftPlayers([])
+  }
+
   function exportCSV() {
     const header = ['Equipo', 'Capitán', 'Teléfono', 'Ciudad', 'Jugadores', 'Estado', 'Fecha']
     const rows = teams.map((t) => [
@@ -136,7 +214,7 @@ export default function AdminPanel() {
   return (
     <div className="admin-shell">
       <div className="admin-sidebar">
-        <div className="brand-text" style={{ marginBottom: 28 }}>FREEDOM EN ESPAÑOL</div>
+        <div className="brand-text compact" style={{ marginBottom: 28 }}>FREEDOM EN ESPAÑOL</div>
         <button
           className={'admin-nav-item ' + (view === 'equipos' ? 'active' : '')}
           onClick={() => {
@@ -209,6 +287,7 @@ export default function AdminPanel() {
                     <th>Jugadores</th>
                     <th>Estado</th>
                     <th>Fecha</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,7 +297,10 @@ export default function AdminPanel() {
                       <tr
                         key={t.id}
                         className={selected?.id === t.id ? 'selected' : ''}
-                        onClick={() => setSelected(t)}
+                        onClick={() => {
+                          setSelected(t)
+                          setEditingPlayers(false)
+                        }}
                       >
                         <td className="team-name-cell">{t.nombre_equipo}</td>
                         <td>{t.capitan_nombre}</td>
@@ -228,6 +310,18 @@ export default function AdminPanel() {
                           <span className={'status-pill ' + st.cls}>{st.text}</span>
                         </td>
                         <td>{new Date(t.created_at).toLocaleDateString('es-MX')}</td>
+                        <td>
+                          <button
+                            className="btn-ghost-sm"
+                            style={{ color: 'var(--red)' }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteTeam(t)
+                            }}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -265,7 +359,13 @@ export default function AdminPanel() {
 
       {selected && (
         <div className="admin-detail">
-          <button className="detail-close" onClick={() => setSelected(null)}>
+          <button
+            className="detail-close"
+            onClick={() => {
+              setSelected(null)
+              setEditingPlayers(false)
+            }}
+          >
             ×
           </button>
           <div className="detail-eyebrow">Detalles del equipo</div>
@@ -286,20 +386,122 @@ export default function AdminPanel() {
               {selected.color_alterno ? ` / ${selected.color_alterno}` : ''}
             </div>
           </div>
+
           <div className="detail-section">
-            <div className="label">Jugadores</div>
-            <div className="value">{selected.jugadores?.length || 0} registrados</div>
-            <div className="detail-player-list">
-              {(selected.jugadores || []).map((p, i) => (
-                <div className="detail-player-item" key={i}>
-                  <span>{p.nombre}</span>
-                  <span style={{ color: 'var(--gray)' }}>
-                    {p.edad} años{p.telefono ? ' · ' + p.telefono : ''}
-                  </span>
-                </div>
-              ))}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div className="label" style={{ marginBottom: 0 }}>
+                Jugadores
+              </div>
+              {!editingPlayers && (
+                <button className="btn-ghost-sm" onClick={startEditingPlayers}>
+                  Editar
+                </button>
+              )}
             </div>
+
+            {!editingPlayers && (
+              <>
+                <div className="value" style={{ marginTop: 6 }}>
+                  {selected.jugadores?.length || 0} registrados
+                </div>
+                <div className="detail-player-list">
+                  {(selected.jugadores || []).map((p, i) => (
+                    <div className="detail-player-item" key={i}>
+                      <span>{p.nombre}</span>
+                      <span style={{ color: 'var(--gray)' }}>
+                        {p.edad} años{p.telefono ? ' · ' + p.telefono : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {editingPlayers && (
+              <div style={{ marginTop: 10 }}>
+                {draftPlayers.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      padding: 10,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <input
+                      value={p.nombre}
+                      onChange={(e) => updateDraftPlayer(i, 'nombre', e.target.value)}
+                      placeholder="Nombre"
+                      style={{ marginBottom: 6 }}
+                    />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        value={p.edad}
+                        onChange={(e) => updateDraftPlayer(i, 'edad', e.target.value)}
+                        placeholder="Edad"
+                        type="number"
+                        style={{ maxWidth: 70 }}
+                      />
+                      <input
+                        value={p.telefono || ''}
+                        onChange={(e) => updateDraftPlayer(i, 'telefono', e.target.value)}
+                        placeholder="Teléfono"
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                    <button
+                      className="btn-ghost-sm"
+                      style={{ marginTop: 8, color: 'var(--red)' }}
+                      onClick={() => removeDraftPlayer(i)}
+                    >
+                      Quitar jugador
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  className="btn-ghost-sm"
+                  onClick={addDraftPlayer}
+                  style={{ marginBottom: 16 }}
+                >
+                  + Agregar jugador
+                </button>
+
+                <div className="btn-row">
+                  <button className="btn-secondary" onClick={cancelEditingPlayers}>
+                    Cancelar
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={savePlayers}
+                    disabled={savingPlayers}
+                  >
+                    {savingPlayers ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {!editingPlayers && (
+            <div className="detail-section">
+              <button
+                className="btn-secondary"
+                style={{ borderColor: 'var(--red)', color: 'var(--red)' }}
+                onClick={() => deleteTeam(selected)}
+                disabled={deletingTeam}
+              >
+                {deletingTeam ? 'Eliminando...' : 'Eliminar equipo'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
