@@ -3,6 +3,17 @@ import { supabase, TABLE_NAME, MIN_JUGADORES } from './supabaseClient.js'
 
 const emptyPlayer = () => ({ nombre: '', edad: '', telefono: '' })
 
+function formatPhone(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 10)
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+function phoneDigits(value) {
+  return value.replace(/\D/g, '')
+}
+
 export default function RegistrationForm() {
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
@@ -19,8 +30,8 @@ export default function RegistrationForm() {
 
   const [team, setTeam] = useState({
     nombre_equipo: '',
-    categoria: '',
     color_uniforme: '',
+    color_alterno: '',
   })
 
   const [players, setPlayers] = useState([emptyPlayer(), emptyPlayer(), emptyPlayer()])
@@ -29,7 +40,7 @@ export default function RegistrationForm() {
   // ---------- Validation ----------
   const captainValid = {
     nombre: captain.nombre.trim().length > 1,
-    telefono: /^[\d\s()+-]{7,}$/.test(captain.telefono.trim()),
+    telefono: phoneDigits(captain.telefono).length === 10,
     edad: captain.edad !== '' && Number(captain.edad) >= 15 && Number(captain.edad) < 90,
     ciudad: captain.ciudad.trim().length > 1,
   }
@@ -72,8 +83,8 @@ export default function RegistrationForm() {
     try {
       const { error } = await supabase.from(TABLE_NAME).insert({
         nombre_equipo: team.nombre_equipo.trim(),
-        categoria: team.categoria,
         color_uniforme: team.color_uniforme.trim(),
+        color_alterno: team.color_alterno.trim(),
         capitan_nombre: captain.nombre.trim(),
         capitan_telefono: captain.telefono.trim(),
         capitan_edad: Number(captain.edad),
@@ -171,13 +182,15 @@ export default function RegistrationForm() {
                   touched.telefono ? (captainValid.telefono ? 'valid' : 'invalid') : ''
                 }
                 value={captain.telefono}
-                onChange={(e) => setCaptain({ ...captain, telefono: e.target.value })}
+                onChange={(e) =>
+                  setCaptain({ ...captain, telefono: formatPhone(e.target.value) })
+                }
                 onBlur={() => markTouched('telefono')}
-                placeholder="(562) 000-0000"
+                placeholder="(562) 555-1234"
                 inputMode="tel"
               />
               {touched.telefono && !captainValid.telefono && (
-                <div className="field-error">Este campo es obligatorio</div>
+                <div className="field-error">Ingresa un número de 10 dígitos</div>
               )}
             </div>
 
@@ -242,20 +255,20 @@ export default function RegistrationForm() {
             </div>
 
             <div className="field">
-              <label>Categoría (opcional)</label>
+              <label>Color principal del uniforme</label>
               <input
-                value={team.categoria}
-                onChange={(e) => setTeam({ ...team, categoria: e.target.value })}
-                placeholder="Ej. Varonil, Femenil, Libre..."
+                value={team.color_uniforme}
+                onChange={(e) => setTeam({ ...team, color_uniforme: e.target.value })}
+                placeholder="Ej. Negro"
               />
             </div>
 
             <div className="field">
-              <label>Color de uniforme</label>
+              <label>Color alternativo del uniforme (opcional)</label>
               <input
-                value={team.color_uniforme}
-                onChange={(e) => setTeam({ ...team, color_uniforme: e.target.value })}
-                placeholder="Ej. Negro y dorado"
+                value={team.color_alterno}
+                onChange={(e) => setTeam({ ...team, color_alterno: e.target.value })}
+                placeholder="Ej. Dorado"
               />
             </div>
 
@@ -290,36 +303,53 @@ export default function RegistrationForm() {
             </div>
 
             {players.map((p, i) => (
-              <div className="player-row" key={i} style={{ flexWrap: 'wrap' }}>
-                <div className="player-num">{i + 1}</div>
-                <div className="field" style={{ flexBasis: '100%' }}>
+              <div key={i} style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span
+                    style={{
+                      fontFamily: 'Montserrat, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: 'var(--gray-dim)',
+                    }}
+                  >
+                    Jugador {i + 1}
+                  </span>
+                  {players.length > 1 && (
+                    <button
+                      className="btn-ghost-sm"
+                      style={{ marginLeft: 'auto', padding: '4px 10px', color: 'var(--red)' }}
+                      onClick={() => removePlayer(i)}
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                <div className="field" style={{ marginBottom: 8 }}>
                   <input
                     value={p.nombre}
                     onChange={(e) => updatePlayer(i, 'nombre', e.target.value)}
                     placeholder="Nombre del jugador"
                   />
                 </div>
-                <div className="field" style={{ maxWidth: 80, marginLeft: 38 }}>
-                  <input
-                    value={p.edad}
-                    onChange={(e) => updatePlayer(i, 'edad', e.target.value)}
-                    type="number"
-                    placeholder="Edad"
-                  />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="field" style={{ marginBottom: 0, maxWidth: 90 }}>
+                    <input
+                      value={p.edad}
+                      onChange={(e) => updatePlayer(i, 'edad', e.target.value)}
+                      type="number"
+                      placeholder="Edad"
+                    />
+                  </div>
+                  <div className="field" style={{ marginBottom: 0, flex: 1 }}>
+                    <input
+                      value={p.telefono}
+                      onChange={(e) => updatePlayer(i, 'telefono', formatPhone(e.target.value))}
+                      placeholder="(562) 555-1234 (opcional)"
+                      inputMode="tel"
+                    />
+                  </div>
                 </div>
-                <div className="field" style={{ flex: 1 }}>
-                  <input
-                    value={p.telefono}
-                    onChange={(e) => updatePlayer(i, 'telefono', e.target.value)}
-                    placeholder="Teléfono (opcional)"
-                    inputMode="tel"
-                  />
-                </div>
-                {players.length > 1 && (
-                  <button className="remove-player" onClick={() => removePlayer(i)}>
-                    ×
-                  </button>
-                )}
               </div>
             ))}
 
@@ -350,7 +380,8 @@ export default function RegistrationForm() {
               <div className="summary-label">Equipo</div>
               <div className="summary-value">{team.nombre_equipo}</div>
               <div style={{ color: 'var(--gray)', fontSize: 14, marginTop: 4 }}>
-                {team.categoria ? team.categoria + ' · ' : ''}Uniforme {team.color_uniforme}
+                Uniforme {team.color_uniforme}
+                {team.color_alterno ? ` · Alterno ${team.color_alterno}` : ''}
               </div>
             </div>
 
