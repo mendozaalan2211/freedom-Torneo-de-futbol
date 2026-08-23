@@ -84,6 +84,16 @@ input, select {
   margin-bottom: 24px;
 }
 
+.brand-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: 24px;
+}
+
 .hero-title {
   font-size: 52px;
   line-height: 0.95;
