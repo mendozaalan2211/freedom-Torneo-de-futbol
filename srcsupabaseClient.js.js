@@ -1,0 +1,12 @@
+import { createClient } from '@supabase/supabase-js'
+
+// Mismo proyecto de Supabase que Panel LOF y Freedom Dashboard
+const SUPABASE_URL = 'https://yjhessebmbiorkkbdeag.supabase.co'
+
+const SUPABASE_ANON_KEY = 'sb_publishable_XXpOP3nmDe_Qxsg5yE0wyw_YZkWt1aG'
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+export const TABLE_NAME = 'equipos_futbol'
+export const MIN_JUGADORES = 7
+export const ADMIN_PIN = '1234'
