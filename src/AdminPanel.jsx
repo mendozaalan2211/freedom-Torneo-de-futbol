@@ -85,13 +85,12 @@ export default function AdminPanel() {
   }
 
   function exportCSV() {
-    const header = ['Equipo', 'Capitán', 'Teléfono', 'Ciudad', 'Categoría', 'Jugadores', 'Estado', 'Fecha']
+    const header = ['Equipo', 'Capitán', 'Teléfono', 'Ciudad', 'Jugadores', 'Estado', 'Fecha']
     const rows = teams.map((t) => [
       t.nombre_equipo,
       t.capitan_nombre,
       t.capitan_telefono,
       t.capitan_ciudad,
-      t.categoria,
       t.jugadores?.length || 0,
       statusFor(t).text,
       new Date(t.created_at).toLocaleDateString('es-MX'),
@@ -281,8 +280,11 @@ export default function AdminPanel() {
             <div className="value">{selected.capitan_telefono}</div>
           </div>
           <div className="detail-section">
-            <div className="label">Categoría</div>
-            <div className="value">{selected.categoria}</div>
+            <div className="label">Color de uniforme</div>
+            <div className="value">
+              {selected.color_uniforme}
+              {selected.color_alterno ? ` / ${selected.color_alterno}` : ''}
+            </div>
           </div>
           <div className="detail-section">
             <div className="label">Jugadores</div>
