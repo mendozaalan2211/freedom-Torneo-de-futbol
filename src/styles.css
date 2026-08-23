@@ -87,11 +87,17 @@ input, select {
 .brand-text {
   font-family: 'Montserrat', sans-serif;
   font-weight: 800;
-  font-size: 15px;
-  letter-spacing: 4px;
+  font-size: 13px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--white);
   margin-bottom: 24px;
+  white-space: nowrap;
+}
+
+.brand-text.compact {
+  font-size: 10px;
+  letter-spacing: 1px;
 }
 
 .hero-title {
