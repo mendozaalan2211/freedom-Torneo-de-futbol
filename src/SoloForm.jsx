@@ -45,7 +45,7 @@ export default function SoloForm({ onBack }) {
     try {
       const { error } = await supabase.from(TABLE_NAME).insert({
         tipo: 'individual',
-        nombre_equipo: null,
+        nombre_equipo: 'Jugador libre - ' + player.nombre.trim(),
         capitan_nombre: player.nombre.trim(),
         capitan_telefono: player.telefono.trim(),
         capitan_edad: Number(player.edad),
