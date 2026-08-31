@@ -63,27 +63,35 @@ export default function AdminPanel() {
     }
   }
 
-  const totalJugadores = teams.reduce((sum, t) => sum + (t.jugadores?.length || 0), 0)
-  const incompletos = teams.filter(
+  const equipoTeams = teams.filter((t) => t.tipo !== 'individual')
+  const soloPlayers = teams.filter((t) => t.tipo === 'individual')
+
+  const totalJugadores = equipoTeams.reduce((sum, t) => sum + (t.jugadores?.length || 0), 0)
+  const incompletos = equipoTeams.filter(
     (t) => (t.jugadores?.length || 0) < MIN_JUGADORES
   ).length
 
   const filteredTeams = useMemo(() => {
+    const source = view === 'individuales' ? soloPlayers : equipoTeams
     const q = search.trim().toLowerCase()
-    if (!q) return teams
-    return teams.filter(
+    if (!q) return source
+    return source.filter(
       (t) =>
         t.nombre_equipo?.toLowerCase().includes(q) ||
         t.capitan_nombre?.toLowerCase().includes(q) ||
         t.capitan_telefono?.toLowerCase().includes(q)
     )
-  }, [teams, search])
+  }, [teams, search, view])
 
   const allPlayers = useMemo(() => {
     const rows = []
     teams.forEach((t) => {
       ;(t.jugadores || []).forEach((p) => {
-        rows.push({ ...p, equipo: t.nombre_equipo, capitan: t.capitan_nombre })
+        rows.push({
+          ...p,
+          equipo: t.tipo === 'individual' ? 'Jugador libre' : t.nombre_equipo,
+          capitan: t.capitan_nombre,
+        })
       })
     })
     return rows
@@ -97,8 +105,9 @@ export default function AdminPanel() {
   }
 
   async function deleteTeam(team) {
+    const label = team.tipo === 'individual' ? team.capitan_nombre : team.nombre_equipo
     const ok = window.confirm(
-      `¿Eliminar el equipo "${team.nombre_equipo}"? Esta acción no se puede deshacer.`
+      `¿Eliminar "${label}"? Esta acción no se puede deshacer.`
     )
     if (!ok) return
     setDeletingTeam(true)
@@ -225,6 +234,15 @@ export default function AdminPanel() {
           Equipos
         </button>
         <button
+          className={'admin-nav-item ' + (view === 'individuales' ? 'active' : '')}
+          onClick={() => {
+            setView('individuales')
+            setSelected(null)
+          }}
+        >
+          Individuales
+        </button>
+        <button
           className={'admin-nav-item ' + (view === 'jugadores' ? 'active' : '')}
           onClick={() => {
             setView('jugadores')
@@ -249,7 +267,7 @@ export default function AdminPanel() {
 
         <div className="stat-cards">
           <div className="stat-card">
-            <div className="stat-num">{teams.length}</div>
+            <div className="stat-num">{equipoTeams.length}</div>
             <div className="stat-label">Equipos</div>
           </div>
           <div className="stat-card">
@@ -260,9 +278,13 @@ export default function AdminPanel() {
             <div className="stat-num">{incompletos}</div>
             <div className="stat-label">Incompletos</div>
           </div>
+          <div className="stat-card">
+            <div className="stat-num">{soloPlayers.length}</div>
+            <div className="stat-label">Individuales</div>
+          </div>
         </div>
 
-        {view === 'equipos' && (
+        {(view === 'equipos' || view === 'individuales') && (
           <>
             <input
               className="search-box"
@@ -274,18 +296,22 @@ export default function AdminPanel() {
             {loading && <div className="empty-state">Cargando registros…</div>}
             {loadError && <div className="empty-state">{loadError}</div>}
             {!loading && !loadError && filteredTeams.length === 0 && (
-              <div className="empty-state">Todavía no hay equipos registrados.</div>
+              <div className="empty-state">
+                {view === 'individuales'
+                  ? 'Todavía no hay jugadores individuales registrados.'
+                  : 'Todavía no hay equipos registrados.'}
+              </div>
             )}
 
             {!loading && !loadError && filteredTeams.length > 0 && (
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Equipo</th>
-                    <th>Capitán</th>
+                    <th>{view === 'individuales' ? 'Nombre' : 'Equipo'}</th>
+                    {view === 'equipos' && <th>Capitán</th>}
                     <th>Ciudad</th>
-                    <th>Jugadores</th>
-                    <th>Estado</th>
+                    {view === 'equipos' && <th>Jugadores</th>}
+                    {view === 'equipos' && <th>Estado</th>}
                     <th>Fecha</th>
                     <th></th>
                   </tr>
@@ -302,13 +328,17 @@ export default function AdminPanel() {
                           setEditingPlayers(false)
                         }}
                       >
-                        <td className="team-name-cell">{t.nombre_equipo}</td>
-                        <td>{t.capitan_nombre}</td>
-                        <td>{t.capitan_ciudad}</td>
-                        <td>{t.jugadores?.length || 0}</td>
-                        <td>
-                          <span className={'status-pill ' + st.cls}>{st.text}</span>
+                        <td className="team-name-cell">
+                          {view === 'individuales' ? t.capitan_nombre : t.nombre_equipo}
                         </td>
+                        {view === 'equipos' && <td>{t.capitan_nombre}</td>}
+                        <td>{t.capitan_ciudad}</td>
+                        {view === 'equipos' && <td>{t.jugadores?.length || 0}</td>}
+                        {view === 'equipos' && (
+                          <td>
+                            <span className={'status-pill ' + st.cls}>{st.text}</span>
+                          </td>
+                        )}
                         <td>{new Date(t.created_at).toLocaleDateString('es-MX')}</td>
                         <td>
                           <button
@@ -368,25 +398,38 @@ export default function AdminPanel() {
           >
             ×
           </button>
-          <div className="detail-eyebrow">Detalles del equipo</div>
-          <h2 className="detail-title">{selected.nombre_equipo}</h2>
-
-          <div className="detail-section">
-            <div className="label">Capitán</div>
-            <div className="value">{selected.capitan_nombre}</div>
+          <div className="detail-eyebrow">
+            {selected.tipo === 'individual' ? 'Jugador libre' : 'Detalles del equipo'}
           </div>
+          <h2 className="detail-title">
+            {selected.tipo === 'individual' ? selected.capitan_nombre : selected.nombre_equipo}
+          </h2>
+
+          {selected.tipo !== 'individual' && (
+            <div className="detail-section">
+              <div className="label">Capitán</div>
+              <div className="value">{selected.capitan_nombre}</div>
+            </div>
+          )}
           <div className="detail-section">
             <div className="label">Teléfono</div>
             <div className="value">{selected.capitan_telefono}</div>
           </div>
           <div className="detail-section">
-            <div className="label">Color de uniforme</div>
-            <div className="value">
-              {selected.color_uniforme}
-              {selected.color_alterno ? ` / ${selected.color_alterno}` : ''}
-            </div>
+            <div className="label">Ciudad</div>
+            <div className="value">{selected.capitan_ciudad}</div>
           </div>
+          {selected.tipo !== 'individual' && (
+            <div className="detail-section">
+              <div className="label">Color de uniforme</div>
+              <div className="value">
+                {selected.color_uniforme}
+                {selected.color_alterno ? ` / ${selected.color_alterno}` : ''}
+              </div>
+            </div>
+          )}
 
+          {selected.tipo !== 'individual' && (
           <div className="detail-section">
             <div
               style={{
@@ -489,6 +532,7 @@ export default function AdminPanel() {
               </div>
             )}
           </div>
+          )}
 
           {!editingPlayers && (
             <div className="detail-section">
@@ -498,7 +542,11 @@ export default function AdminPanel() {
                 onClick={() => deleteTeam(selected)}
                 disabled={deletingTeam}
               >
-                {deletingTeam ? 'Eliminando...' : 'Eliminar equipo'}
+                {deletingTeam
+                  ? 'Eliminando...'
+                  : selected.tipo === 'individual'
+                  ? 'Eliminar registro'
+                  : 'Eliminar equipo'}
               </button>
             </div>
           )}
